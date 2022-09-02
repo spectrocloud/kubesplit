@@ -19,6 +19,9 @@ var _ = Describe("Parser", func() {
 kind: Service
 bar: foo
 ---
+kind: Service
+new: bar
+---
 kind: NOEXISTS
 noway: togo
 `
@@ -46,6 +49,13 @@ noway: togo
 
 			Expect(string(serviceContent)).ToNot(ContainSubstring("noway: togo"))
 			Expect(string(content)).ToNot(ContainSubstring("bar: foo"))
+
+			Expect(string(serviceContent)).To(Equal(`kind: Service
+bar: foo
+---
+kind: Service
+new: bar
+`))
 		})
 
 	})
