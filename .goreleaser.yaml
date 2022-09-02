@@ -1,0 +1,35 @@
+# Make sure to check the documentation at http://goreleaser.com
+project_name: "kubesplit"
+builds:
+  - ldflags:
+      - -w -s
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+      - 386
+    main: ./
+    id: "kubesplit"
+    binary: "kubesplit"
+source:
+  enabled: true
+  name_template: '{{ .ProjectName }}-{{ .Tag }}-source'
+archives:
+  - format: binary # this removes the tar of the archives, leaving the binaries alone
+    name_template: kubesplit-{{ .Tag }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+checksum:
+  name_template: '{{ .ProjectName }}-{{ .Tag }}-checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^Merge pull request'
