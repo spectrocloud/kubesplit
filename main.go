@@ -50,7 +50,7 @@ func main() {
 		if err := ioutil.WriteFile(filepath.Join(dir, "_helpers.tpl"), []byte(template), os.ModePerm); err != nil {
 			panic(err)
 		}
-		if err := ioutil.WriteFile(filepath.Join(dir, "values.yaml.default"), []byte(template), os.ModePerm); err != nil {
+		if err := ioutil.WriteFile(filepath.Join(dir, "values.yaml.default"), []byte(values), os.ModePerm); err != nil {
 			panic(err)
 		}
 	}

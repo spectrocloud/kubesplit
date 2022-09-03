@@ -15,7 +15,7 @@ type rules struct {
 	Replacement func(content []byte) []byte
 }
 
-// Mutator mutates content with helm rules
+// Mutator mutates content with helm rules.
 func Mutator(content []byte, data map[string]interface{}) []byte {
 	for _, rule := range helmRules {
 		if rule.Condition(content, data) {
@@ -92,7 +92,6 @@ func hasKey(key string) func(content []byte, data map[string]interface{}) bool {
 	}
 }
 
-// unused
 func hasKeyWithValue(key, value string) func(content []byte, data map[string]interface{}) bool {
 	return func(content []byte, data map[string]interface{}) bool {
 		var root yaml.Node

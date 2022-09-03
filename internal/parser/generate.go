@@ -7,7 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Mutator defines a mutator which changes the content to be written after parsing
+// Mutator defines a mutator which changes the content to be written after parsing.
 type Mutator func(content []byte, data map[string]interface{}) []byte
 
 type Config struct {
@@ -25,7 +25,7 @@ func (c *Config) Apply(opts ...Option) error {
 	return nil
 }
 
-// WithMutators adds mutator to the parsing process
+// WithMutators adds mutator to the parsing process.
 func WithMutators(m ...Mutator) Option {
 	return func(c *Config) error {
 		c.Mutators = append(c.Mutators, m...)
