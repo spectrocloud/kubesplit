@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/spectrocloud/kubesplit/internal/helm"
 	. "github.com/spectrocloud/kubesplit/internal/parser"
 )
 
@@ -56,6 +57,32 @@ bar: foo
 kind: Service
 new: bar
 `))
+		})
+
+	})
+
+	Context("Transforming", func() {
+		It("replaces known helm templating values", func() {
+
+			data := `kind: Service
+metadata:
+  namespace: "foo"`
+
+			tempdir, err := ioutil.TempDir("", "foo")
+			Expect(err).ToNot(HaveOccurred())
+
+			defer os.RemoveAll(tempdir)
+
+			err = Generate(bytes.NewBufferString(data), tempdir, WithMutators(helm.Mutator))
+			Expect(err).ToNot(HaveOccurred())
+
+			serviceFile := filepath.Join(tempdir, "service.yaml")
+			Expect(serviceFile).To(BeARegularFile())
+
+			serviceContent, err := ioutil.ReadFile(serviceFile)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(string(serviceContent)).To(ContainSubstring(`namespace: "{{.Release.Namespace}}"`), string(serviceContent))
 		})
 
 	})
