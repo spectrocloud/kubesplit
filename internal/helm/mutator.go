@@ -67,6 +67,14 @@ var helmRules = []rules{
 		Condition:   hasKeyWithValue("/kind", "RoleBinding"),
 		Replacement: replaceKeyValue(`/subjects/0/namespace`, `{{.Release.Namespace}}`),
 	},
+	{
+		Condition:   hasKeyWithValue("/kind", "ClusterRoleBinding"),
+		Replacement: replaceKeyValue(`/subjects/0/name`, `{{ include "helm-chart.serviceAccountName" . }}`),
+	},
+	{
+		Condition:   hasKeyWithValue("/kind", "RoleBinding"),
+		Replacement: replaceKeyValue(`/subjects/0/name`, `{{ include "helm-chart.serviceAccountName" . }}`),
+	},
 	// {
 	// 	Condition:   hasKeyWithValue("/kind", "Deployment"),
 	// 	Replacement: replaceKeyValue(`/spec/selector/matchLabels`, `{{- include "helm-chart.selectorLabels" . | nindent 6 }}`),
