@@ -92,11 +92,7 @@ func hasKey(key string) func(content []byte, data map[string]interface{}) bool {
 			return false
 		}
 		_, err := yptr.Find(&root, key)
-		if err != nil {
-			return false
-		}
-
-		return true
+		return err == nil
 	}
 }
 
