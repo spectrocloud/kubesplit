@@ -12,6 +12,8 @@ const (
 	MutatingWebhookConfiguration = "MutatingWebhookConfiguration"
 	Certificate                  = "Certificate"
 	Issuer                       = "Issuer"
+	CRDs                         = "CustomResourceDefinition"
+	Namespace                    = "Namespace"
 )
 
 const (
@@ -22,6 +24,8 @@ const (
 	ConfigMapFile       = "configmap.yaml"
 	MutatingWebhookFile = "mutatingwebhook.yaml"
 	CertificateFile     = "certificates.yaml"
+	CRDFile             = "crds.yaml"
+	NoFile              = ""
 )
 
 var typeMap = map[string]string{
@@ -33,9 +37,11 @@ var typeMap = map[string]string{
 	RoleBinding:                  RbacFile,
 	ClusterRoleBinding:           RbacFile,
 	ConfigMap:                    ConfigMapFile,
+	Namespace:                    NoFile,
 	MutatingWebhookConfiguration: MutatingWebhookFile,
 	Certificate:                  CertificateFile,
 	Issuer:                       CertificateFile,
+	CRDs:                         CRDFile,
 }
 
 type data map[string]interface{}

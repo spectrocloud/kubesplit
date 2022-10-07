@@ -9,6 +9,10 @@ import (
 func processYAML(outdir string, content []byte, data map[string]interface{}) error {
 	unknownPath := filepath.Join(outdir, "other.yaml")
 	for t, file := range typeMap {
+		if file == "" {
+			fmt.Printf("Skipping '%s' (%s)\n", filepath.Join(outdir, file), t)
+			continue
+		}
 		if isType(data, t) {
 			fmt.Printf("Adding '%s' (%s)\n", filepath.Join(outdir, file), t)
 			if err := appendFile(content, filepath.Join(outdir, file)); err != nil {
