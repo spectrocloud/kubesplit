@@ -1,13 +1,9 @@
 package helm
 
 import (
-	"fmt"
 	"strings"
 
 	unstructured "github.com/kairos-io/kairos/sdk/unstructured"
-	yamled "github.com/vmware-labs/go-yaml-edit"
-	yptr "github.com/vmware-labs/yaml-jsonpointer"
-	"golang.org/x/text/transform"
 	"gopkg.in/yaml.v3"
 )
 
@@ -29,52 +25,52 @@ func Mutator(content []byte, data map[string]interface{}) []byte {
 
 var helmRules = []rules{
 	{
-		Condition:   hasKey(".metadata.namespace"),
-		Replacement: replaceKeyValue(`/metadata/namespace`, "{{.Release.Namespace}}"),
+		Condition:   hasKey("metadata.namespace"),
+		Replacement: replaceKeyValue(`.metadata.namespace="{{.Release.Namespace}}"`, ""),
+	},
+	{
+		Condition:   hasKeyWithValue(".kind", "Service"),
+		Replacement: replaceKeyValue(`.metadata.name="{{ include \"helm-chart.fullname\" . }}"`, ""),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "Deployment"),
-		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.fullname" . }}`),
+		Replacement: replaceKeyValue(`.spec.template.spec.containers[1].image="{{ .Values.image.repository | default \"\" }}:{{ .Values.image.tag | default .Chart.AppVersion }}"`, ""),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "Deployment"),
-		Replacement: replaceKeyValue(`/spec/template/spec/containers/1/image`, `{{ .Values.image.repository | default "" }}:{{ .Values.image.tag | default .Chart.AppVersion }}`),
-	},
-	{
-		Condition:   hasKeyWithValue(".kind", "Deployment"),
-		Replacement: replaceKeyValue(`/spec/template/spec/serviceAccountName`, `{{ include "helm-chart.serviceAccountName" . }}`),
+		Replacement: replaceKeyValue(`.spec.template.spec.serviceAccountName="{{ include \"helm-chart.serviceAccountName\" . }}"`, ""),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "ServiceAccount"),
-		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.serviceAccountName" . }}`),
+		Replacement: replaceKeyValue(`.metadata.name="{{ include \"helm-chart.serviceAccountName\" . }}"`, ""),
 	},
 	{
 		Condition:   keyContainsValue(".metadata.name", "metrics-service"),
-		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.fullname" . }}-metrics-service`),
+		Replacement: replaceKeyValue(`.metadata.name="{{ include \"helm-chart.fullname\" . }}-metrics-service"`, ""),
 	},
 	{
 		Condition:   keyContainsValue(".metadata.name", "webhook-service"),
-		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.fullname" . }}-webhook-service`),
+		Replacement: replaceKeyValue(`.metadata.name="{{ include \"helm-chart.fullname\" . }}-webhook-service"`, ""),
 	},
 	{
 		Condition:   keyContainsValue(".metadata.name", "serving-cert"),
-		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.fullname" . }}-serving-cert`),
+		Replacement: replaceKeyValue(`.metadata.name="{{ include \"helm-chart.fullname\" . }}-serving-cert"`, ""),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "ClusterRoleBinding"),
-		Replacement: replaceKeyValue(`/subjects/0/namespace`, `{{.Release.Namespace}}`),
+		Replacement: replaceKeyValue(`.subjects[0].namespace="{{.Release.Namespace}}"`, ""),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "RoleBinding"),
-		Replacement: replaceKeyValue(`/subjects/0/namespace`, `{{.Release.Namespace}}`),
+		Replacement: replaceKeyValue(`.subjects[0].namespace="{{.Release.Namespace}}"`, ""),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "ClusterRoleBinding"),
-		Replacement: replaceKeyValue(`/subjects/0/name`, `{{ include "helm-chart.serviceAccountName" . }}`),
+		Replacement: replaceKeyValue(`.subjects[0].name="{{ include \"helm-chart.serviceAccountName\" . }}"`, ""),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "RoleBinding"),
-		Replacement: replaceKeyValue(`/subjects/0/name`, `{{ include "helm-chart.serviceAccountName" . }}`),
+		Replacement: replaceKeyValue(`.subjects[0].name="{{ include \"helm-chart.serviceAccountName\" . }}"`, ""),
 	},
 	// {
 	// 	Condition:   hasKeyWithValue("/kind", "Deployment"),
@@ -110,28 +106,12 @@ func keyContainsValue(key, value string) func(content []byte, data map[string]in
 
 func replaceKeyValue(key, value string) func(content []byte) []byte {
 	return func(content []byte) []byte {
-
-		var root yaml.Node
-		if err := yaml.Unmarshal(content, &root); err != nil {
-			fmt.Println(err)
-			return content
-		}
-
-		nameNode, err := yptr.Find(&root, key)
+		data := map[string]interface{}{}
+		err := yaml.Unmarshal(content, &data)
 		if err != nil {
-			fmt.Println(err)
-			return content
+			panic(err)
 		}
-
-		out, _, err := transform.Bytes(yamled.T(
-			yamled.Node(nameNode).With(value),
-		), content)
-
-		if err == nil {
-			return out
-		}
-
-		fmt.Println(err)
-		return content
+		v, _ := unstructured.ReplaceValue(key, data)
+		return []byte(v)
 	}
 }

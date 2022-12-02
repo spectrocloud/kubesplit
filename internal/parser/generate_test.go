@@ -56,10 +56,8 @@ noway: togo
 bar: foo
 ---
 kind: Service
-metadata:
-  name: {{ include "helm-chart.fullname" . }}-metrics-service
 new: bar
-`))
+`), string(serviceContent))
 		})
 
 	})
@@ -86,11 +84,8 @@ metadata:
 			serviceContent, err := ioutil.ReadFile(serviceFile)
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(string(serviceContent)).To(ContainSubstring(`namespace: "{{.Release.Namespace}}"`), string(serviceContent))
+			Expect(string(serviceContent)).To(ContainSubstring(`namespace: '{{.Release.Namespace}}'`), string(serviceContent))
 			Expect(string(serviceContent)).To(ContainSubstring(`name: '{{ include "helm-chart.fullname" . }}-metrics-service'`), string(serviceContent))
-
 		})
-
 	})
-
 })
