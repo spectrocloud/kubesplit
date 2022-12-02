@@ -29,51 +29,51 @@ func Mutator(content []byte, data map[string]interface{}) []byte {
 
 var helmRules = []rules{
 	{
-		Condition:   hasKey("metadata.namespace"),
+		Condition:   hasKey(".metadata.namespace"),
 		Replacement: replaceKeyValue(`/metadata/namespace`, "{{.Release.Namespace}}"),
 	},
 	{
-		Condition:   hasKeyWithValue("kind", "Deployment"),
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
 		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.fullname" . }}`),
 	},
 	{
-		Condition:   hasKeyWithValue("kind", "Deployment"),
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
 		Replacement: replaceKeyValue(`/spec/template/spec/containers/1/image`, `{{ .Values.image.repository | default "" }}:{{ .Values.image.tag | default .Chart.AppVersion }}`),
 	},
 	{
-		Condition:   hasKeyWithValue("kind", "Deployment"),
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
 		Replacement: replaceKeyValue(`/spec/template/spec/serviceAccountName`, `{{ include "helm-chart.serviceAccountName" . }}`),
 	},
 	{
-		Condition:   hasKeyWithValue("kind", "ServiceAccount"),
+		Condition:   hasKeyWithValue(".kind", "ServiceAccount"),
 		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.serviceAccountName" . }}`),
 	},
 	{
-		Condition:   keyContainsValue("metadata.name", "metrics-service"),
+		Condition:   keyContainsValue(".metadata.name", "metrics-service"),
 		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.fullname" . }}-metrics-service`),
 	},
 	{
-		Condition:   keyContainsValue("metadata.name", "webhook-service"),
+		Condition:   keyContainsValue(".metadata.name", "webhook-service"),
 		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.fullname" . }}-webhook-service`),
 	},
 	{
-		Condition:   keyContainsValue("metadata.name", "serving-cert"),
+		Condition:   keyContainsValue(".metadata.name", "serving-cert"),
 		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.fullname" . }}-serving-cert`),
 	},
 	{
-		Condition:   hasKeyWithValue("kind", "ClusterRoleBinding"),
+		Condition:   hasKeyWithValue(".kind", "ClusterRoleBinding"),
 		Replacement: replaceKeyValue(`/subjects/0/namespace`, `{{.Release.Namespace}}`),
 	},
 	{
-		Condition:   hasKeyWithValue("kind", "RoleBinding"),
+		Condition:   hasKeyWithValue(".kind", "RoleBinding"),
 		Replacement: replaceKeyValue(`/subjects/0/namespace`, `{{.Release.Namespace}}`),
 	},
 	{
-		Condition:   hasKeyWithValue("kind", "ClusterRoleBinding"),
+		Condition:   hasKeyWithValue(".kind", "ClusterRoleBinding"),
 		Replacement: replaceKeyValue(`/subjects/0/name`, `{{ include "helm-chart.serviceAccountName" . }}`),
 	},
 	{
-		Condition:   hasKeyWithValue("kind", "RoleBinding"),
+		Condition:   hasKeyWithValue(".kind", "RoleBinding"),
 		Replacement: replaceKeyValue(`/subjects/0/name`, `{{ include "helm-chart.serviceAccountName" . }}`),
 	},
 	// {
@@ -96,24 +96,15 @@ func hasKey(key string) func(content []byte, data map[string]interface{}) bool {
 
 func hasKeyWithValue(key, value string) func(content []byte, data map[string]interface{}) bool {
 	return func(content []byte, data map[string]interface{}) bool {
-		_, err := unstructured.LookupString(key, data)
-
-		return err == nil
+		v, err := unstructured.LookupString(key, data)
+		return err == nil && v == value
 	}
 }
 
 func keyContainsValue(key, value string) func(content []byte, data map[string]interface{}) bool {
 	return func(content []byte, data map[string]interface{}) bool {
-		var root yaml.Node
-		if err := yaml.Unmarshal(content, &root); err != nil {
-			return false
-		}
-		v, err := yptr.Find(&root, key)
-		if err != nil {
-			return false
-		}
-
-		return strings.Contains(v.Value, value)
+		v, err := unstructured.LookupString(key, data)
+		return err == nil && strings.Contains(v, value)
 	}
 }
 

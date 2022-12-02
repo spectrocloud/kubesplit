@@ -32,7 +32,8 @@ noway: togo
 
 			defer os.RemoveAll(tempdir)
 
-			Generate(bytes.NewBufferString(data), tempdir)
+			err = Generate(bytes.NewBufferString(data), tempdir)
+			Expect(err).ToNot(HaveOccurred())
 
 			serviceFile := filepath.Join(tempdir, "service.yaml")
 			unknownFile := filepath.Join(tempdir, "other.yaml")
@@ -55,6 +56,8 @@ noway: togo
 bar: foo
 ---
 kind: Service
+metadata:
+  name: {{ include "helm-chart.fullname" . }}-metrics-service
 new: bar
 `))
 		})
@@ -66,6 +69,7 @@ new: bar
 
 			data := `kind: Service
 metadata:
+  name: some-metrics-service-name
   namespace: "foo"`
 
 			tempdir, err := ioutil.TempDir("", "foo")
@@ -83,6 +87,8 @@ metadata:
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(string(serviceContent)).To(ContainSubstring(`namespace: "{{.Release.Namespace}}"`), string(serviceContent))
+			Expect(string(serviceContent)).To(ContainSubstring(`name: '{{ include "helm-chart.fullname" . }}-metrics-service'`), string(serviceContent))
+
 		})
 
 	})
