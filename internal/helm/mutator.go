@@ -1,6 +1,7 @@
 package helm
 
 import (
+	"fmt"
 	"strings"
 
 	unstructured "github.com/kairos-io/kairos/sdk/unstructured"
@@ -26,56 +27,56 @@ func Mutator(content []byte, data map[string]interface{}) []byte {
 var helmRules = []rules{
 	{
 		Condition:   hasKey("metadata.namespace"),
-		Replacement: replaceKeyValue(`.metadata.namespace="{{.Release.Namespace}}"`, ""),
+		Replacement: replaceKeyValue(`.metadata.namespace`, `"{{.Release.Namespace}}"`),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "Service"),
-		Replacement: replaceKeyValue(`.metadata.name="{{ include \"helm-chart.fullname\" . }}"`, ""),
+		Replacement: replaceKeyValue(`.metadata.name`, `"{{ include \"helm-chart.fullname\" . }}"`),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "Deployment"),
-		Replacement: replaceKeyValue(`.spec.template.spec.containers[1].image="{{ .Values.image.repository | default \"\" }}:{{ .Values.image.tag | default .Chart.AppVersion }}"`, ""),
+		Replacement: replaceKeyValue(`.spec.template.spec.containers[1].image`, `"{{ .Values.image.repository | default \"\" }}:{{ .Values.image.tag | default .Chart.AppVersion }}"`),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "Deployment"),
-		Replacement: replaceKeyValue(`.spec.template.spec.serviceAccountName="{{ include \"helm-chart.serviceAccountName\" . }}"`, ""),
+		Replacement: replaceKeyValue(`.spec.template.spec.serviceAccountName`, `"{{ include \"helm-chart.serviceAccountName\" . }}"`),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "ServiceAccount"),
-		Replacement: replaceKeyValue(`.metadata.name="{{ include \"helm-chart.serviceAccountName\" . }}"`, ""),
+		Replacement: replaceKeyValue(`.metadata.name`, `"{{ include \"helm-chart.serviceAccountName\" . }}"`),
 	},
 	{
 		Condition:   keyContainsValue(".metadata.name", "metrics-service"),
-		Replacement: replaceKeyValue(`.metadata.name="{{ include \"helm-chart.fullname\" . }}-metrics-service"`, ""),
+		Replacement: replaceKeyValue(`.metadata.name`, `"{{ include \"helm-chart.fullname\" . }}-metrics-service"`),
 	},
 	{
 		Condition:   keyContainsValue(".metadata.name", "webhook-service"),
-		Replacement: replaceKeyValue(`.metadata.name="{{ include \"helm-chart.fullname\" . }}-webhook-service"`, ""),
+		Replacement: replaceKeyValue(`.metadata.name`, `"{{ include \"helm-chart.fullname\" . }}-webhook-service"`),
 	},
 	{
 		Condition:   keyContainsValue(".metadata.name", "serving-cert"),
-		Replacement: replaceKeyValue(`.metadata.name="{{ include \"helm-chart.fullname\" . }}-serving-cert"`, ""),
+		Replacement: replaceKeyValue(`.metadata.name`, `"{{ include \"helm-chart.fullname\" . }}-serving-cert"`),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "ClusterRoleBinding"),
-		Replacement: replaceKeyValue(`.subjects[0].namespace="{{.Release.Namespace}}"`, ""),
+		Replacement: replaceKeyValue(`.subjects[0].namespace`, `"{{.Release.Namespace}}"`),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "RoleBinding"),
-		Replacement: replaceKeyValue(`.subjects[0].namespace="{{.Release.Namespace}}"`, ""),
+		Replacement: replaceKeyValue(`.subjects[0].namespace`, `"{{.Release.Namespace}}"`),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "ClusterRoleBinding"),
-		Replacement: replaceKeyValue(`.subjects[0].name="{{ include \"helm-chart.serviceAccountName\" . }}"`, ""),
+		Replacement: replaceKeyValue(`.subjects[0].name`, `"{{ include \"helm-chart.serviceAccountName\" . }}"`),
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "RoleBinding"),
-		Replacement: replaceKeyValue(`.subjects[0].name="{{ include \"helm-chart.serviceAccountName\" . }}"`, ""),
+		Replacement: replaceKeyValue(`.subjects[0].name`, `"{{ include \"helm-chart.serviceAccountName\" . }}"`),
 	},
-	// {
-	// 	Condition:   hasKeyWithValue("/kind", "Deployment"),
-	// 	Replacement: replaceKeyValue(`/spec/selector/matchLabels`, `{{- include "helm-chart.selectorLabels" . | nindent 6 }}`),
-	// },
+	{
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
+		Replacement: replaceKeyValue(`.spec.selector.matchLabels`, `"{{- include \"helm-chart.selectorLabels\" . | nindent 6 }}"`),
+	},
 	// {
 	// 	Condition:   hasKeyWithValue("/kind", "Deployment"),
 	// 	Replacement: replaceKeyValue(`/spec/template/metadata/labels`, `{{- include "helm-chart.selectorLabels" . | nindent 10 }}`),
@@ -111,7 +112,10 @@ func replaceKeyValue(key, value string) func(content []byte) []byte {
 		if err != nil {
 			panic(err)
 		}
-		v, _ := unstructured.ReplaceValue(key, data)
+		v, err := unstructured.ReplaceValue(fmt.Sprintf("%s=%s", key, value), data)
+		if err != nil {
+			panic(err.Error())
+		}
 		return []byte(v)
 	}
 }

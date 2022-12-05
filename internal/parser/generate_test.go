@@ -68,7 +68,14 @@ new: bar
 			data := `kind: Service
 metadata:
   name: some-metrics-service-name
-  namespace: "foo"`
+  namespace: "foo"
+---
+kind: Deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+`
 
 			tempdir, err := ioutil.TempDir("", "foo")
 			Expect(err).ToNot(HaveOccurred())
@@ -86,6 +93,14 @@ metadata:
 
 			Expect(string(serviceContent)).To(ContainSubstring(`namespace: '{{.Release.Namespace}}'`), string(serviceContent))
 			Expect(string(serviceContent)).To(ContainSubstring(`name: '{{ include "helm-chart.fullname" . }}-metrics-service'`), string(serviceContent))
+
+			deploymentFile := filepath.Join(tempdir, "deployment.yaml")
+			Expect(deploymentFile).To(BeARegularFile())
+
+			deploymentContent, err := ioutil.ReadFile(deploymentFile)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(string(deploymentContent)).To(ContainSubstring(`matchLabels: '{{- include "helm-chart.selectorLabels" . | nindent 6 }}'`), string(serviceContent))
 		})
 	})
 })
