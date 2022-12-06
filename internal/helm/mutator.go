@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	yamled "github.com/vmware-labs/go-yaml-edit"
-	yptr "github.com/vmware-labs/yaml-jsonpointer"
-	"golang.org/x/text/transform"
+	unstructured "github.com/kairos-io/kairos/sdk/unstructured"
 	"gopkg.in/yaml.v3"
 )
 
@@ -28,128 +26,112 @@ func Mutator(content []byte, data map[string]interface{}) []byte {
 
 var helmRules = []rules{
 	{
-		Condition:   hasKey("/metadata/namespace"),
-		Replacement: replaceKeyValue(`/metadata/namespace`, "{{.Release.Namespace}}"),
+		Condition:   hasKey("metadata.namespace"),
+		Replacement: replaceKeyValue(`.metadata.namespace`, `"{{.Release.Namespace}}"`),
 	},
 	{
-		Condition:   hasKeyWithValue("/kind", "Deployment"),
-		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.fullname" . }}`),
+		Condition:   hasKeyWithValue(".kind", "Service"),
+		Replacement: replaceKeyValue(`.metadata.name`, `"{{ include \"helm-chart.fullname\" . }}"`),
 	},
 	{
-		Condition:   hasKeyWithValue("/kind", "Deployment"),
-		Replacement: replaceKeyValue(`/spec/template/spec/containers/1/image`, `{{ .Values.image.repository | default "" }}:{{ .Values.image.tag | default .Chart.AppVersion }}`),
+		Condition:   hasKeyWithValue(".kind", "Service"),
+		Replacement: replaceKeyValue(`.spec.selector`, `"{{- include \"helm-chart.selectorLabels\" . | nindent 6 }}"`),
 	},
 	{
-		Condition:   hasKeyWithValue("/kind", "Deployment"),
-		Replacement: replaceKeyValue(`/spec/template/spec/serviceAccountName`, `{{ include "helm-chart.serviceAccountName" . }}`),
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
+		Replacement: replaceKeyValue(`.spec.template.spec.containers[1].image`, `"{{ .Values.image.repository | default \"\" }}:{{ .Values.image.tag | default .Chart.AppVersion }}"`),
 	},
 	{
-		Condition:   hasKeyWithValue("/kind", "ServiceAccount"),
-		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.serviceAccountName" . }}`),
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
+		Replacement: replaceKeyValue(`.spec.template.spec.serviceAccountName`, `"{{ include \"helm-chart.serviceAccountName\" . }}"`),
 	},
 	{
-		Condition:   keyContainsValue("/metadata/name", "metrics-service"),
-		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.fullname" . }}-metrics-service`),
+		Condition:   hasKeyWithValue(".kind", "ServiceAccount"),
+		Replacement: replaceKeyValue(`.metadata.name`, `"{{ include \"helm-chart.serviceAccountName\" . }}"`),
 	},
 	{
-		Condition:   keyContainsValue("/metadata/name", "webhook-service"),
-		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.fullname" . }}-webhook-service`),
+		Condition:   keyContainsValue(".metadata.name", "metrics-service"),
+		Replacement: replaceKeyValue(`.metadata.name`, `"{{ include \"helm-chart.fullname\" . }}-metrics-service"`),
 	},
 	{
-		Condition:   keyContainsValue("/metadata/name", "serving-cert"),
-		Replacement: replaceKeyValue(`/metadata/name`, `{{ include "helm-chart.fullname" . }}-serving-cert`),
+		Condition:   keyContainsValue(".metadata.name", "webhook-service"),
+		Replacement: replaceKeyValue(`.metadata.name`, `"{{ include \"helm-chart.fullname\" . }}-webhook-service"`),
 	},
 	{
-		Condition:   hasKeyWithValue("/kind", "ClusterRoleBinding"),
-		Replacement: replaceKeyValue(`/subjects/0/namespace`, `{{.Release.Namespace}}`),
+		Condition:   keyContainsValue(".metadata.name", "serving-cert"),
+		Replacement: replaceKeyValue(`.metadata.name`, `"{{ include \"helm-chart.fullname\" . }}-serving-cert"`),
 	},
 	{
-		Condition:   hasKeyWithValue("/kind", "RoleBinding"),
-		Replacement: replaceKeyValue(`/subjects/0/namespace`, `{{.Release.Namespace}}`),
+		Condition:   hasKeyWithValue(".kind", "ClusterRoleBinding"),
+		Replacement: replaceKeyValue(`.subjects[0].namespace`, `"{{.Release.Namespace}}"`),
 	},
 	{
-		Condition:   hasKeyWithValue("/kind", "ClusterRoleBinding"),
-		Replacement: replaceKeyValue(`/subjects/0/name`, `{{ include "helm-chart.serviceAccountName" . }}`),
+		Condition:   hasKeyWithValue(".kind", "RoleBinding"),
+		Replacement: replaceKeyValue(`.subjects[0].namespace`, `"{{.Release.Namespace}}"`),
 	},
 	{
-		Condition:   hasKeyWithValue("/kind", "RoleBinding"),
-		Replacement: replaceKeyValue(`/subjects/0/name`, `{{ include "helm-chart.serviceAccountName" . }}`),
+		Condition:   hasKeyWithValue(".kind", "ClusterRoleBinding"),
+		Replacement: replaceKeyValue(`.subjects[0].name`, `"{{ include \"helm-chart.serviceAccountName\" . }}"`),
 	},
-	// {
-	// 	Condition:   hasKeyWithValue("/kind", "Deployment"),
-	// 	Replacement: replaceKeyValue(`/spec/selector/matchLabels`, `{{- include "helm-chart.selectorLabels" . | nindent 6 }}`),
-	// },
-	// {
-	// 	Condition:   hasKeyWithValue("/kind", "Deployment"),
-	// 	Replacement: replaceKeyValue(`/spec/template/metadata/labels`, `{{- include "helm-chart.selectorLabels" . | nindent 10 }}`),
-	// },
+	{
+		Condition:   hasKeyWithValue(".kind", "RoleBinding"),
+		Replacement: replaceKeyValue(`.subjects[0].name`, `"{{ include \"helm-chart.serviceAccountName\" . }}"`),
+	},
+	{
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
+		Replacement: replaceKeyValue(`.spec.labels`, `"{{- include \"helm-chart.labels\" . | nindent 8 }}"`),
+	},
+	{
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
+		Replacement: replaceKeyValue(`.spec.selector.matchLabels`, `"{{- include \"helm-chart.selectorLabels\" . | nindent 10 }}"`),
+	},
+	{
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
+		Replacement: replaceKeyValue(`.spec.template.metadata.labels`, `"{{- include \"helm-chart.selectorLabels\" . | nindent 14 }}"`),
+	},
+	{
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
+		Replacement: replaceKeyValue(`.spec.template.metadata.annotations`, `"{{- range keys .Values.podAnnotations }}{{ . | quote }}: {{ get $.Values.podAnnotations . | quote}}{{- end }}"`),
+	},
+	{
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
+		Replacement: replaceKeyValue(`.imagePullSecrets`, `"{{ toYaml .Values.imagePullSecrets | nindent 14 }}"`),
+	},
 }
 
 func hasKey(key string) func(content []byte, data map[string]interface{}) bool {
 	return func(content []byte, data map[string]interface{}) bool {
-		var root yaml.Node
-		if err := yaml.Unmarshal(content, &root); err != nil {
-			return false
-		}
-		_, err := yptr.Find(&root, key)
-		return err == nil
+		result, _ := unstructured.YAMLHasKey(key, content)
+
+		return result
 	}
 }
 
 func hasKeyWithValue(key, value string) func(content []byte, data map[string]interface{}) bool {
 	return func(content []byte, data map[string]interface{}) bool {
-		var root yaml.Node
-		if err := yaml.Unmarshal(content, &root); err != nil {
-			return false
-		}
-		v, err := yptr.Find(&root, key)
-		if err != nil {
-			return false
-		}
-
-		return v.Value == value
+		v, err := unstructured.LookupString(key, data)
+		return err == nil && v == value
 	}
 }
 
 func keyContainsValue(key, value string) func(content []byte, data map[string]interface{}) bool {
 	return func(content []byte, data map[string]interface{}) bool {
-		var root yaml.Node
-		if err := yaml.Unmarshal(content, &root); err != nil {
-			return false
-		}
-		v, err := yptr.Find(&root, key)
-		if err != nil {
-			return false
-		}
-
-		return strings.Contains(v.Value, value)
+		v, err := unstructured.LookupString(key, data)
+		return err == nil && strings.Contains(v, value)
 	}
 }
 
 func replaceKeyValue(key, value string) func(content []byte) []byte {
 	return func(content []byte) []byte {
-
-		var root yaml.Node
-		if err := yaml.Unmarshal(content, &root); err != nil {
-			fmt.Println(err)
-			return content
-		}
-
-		nameNode, err := yptr.Find(&root, key)
+		data := map[string]interface{}{}
+		err := yaml.Unmarshal(content, &data)
 		if err != nil {
-			fmt.Println(err)
-			return content
+			panic(err)
 		}
-
-		out, _, err := transform.Bytes(yamled.T(
-			yamled.Node(nameNode).With(value),
-		), content)
-
-		if err == nil {
-			return out
+		v, err := unstructured.ReplaceValue(fmt.Sprintf("%s=%s", key, value), data)
+		if err != nil {
+			panic(err.Error())
 		}
-
-		fmt.Println(err)
-		return content
+		return []byte(v)
 	}
 }

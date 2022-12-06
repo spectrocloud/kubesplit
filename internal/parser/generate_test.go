@@ -32,7 +32,8 @@ noway: togo
 
 			defer os.RemoveAll(tempdir)
 
-			Generate(bytes.NewBufferString(data), tempdir)
+			err = Generate(bytes.NewBufferString(data), tempdir)
+			Expect(err).ToNot(HaveOccurred())
 
 			serviceFile := filepath.Join(tempdir, "service.yaml")
 			unknownFile := filepath.Join(tempdir, "other.yaml")
@@ -56,7 +57,7 @@ bar: foo
 ---
 kind: Service
 new: bar
-`))
+`), string(serviceContent))
 		})
 
 	})
@@ -66,7 +67,15 @@ new: bar
 
 			data := `kind: Service
 metadata:
-  namespace: "foo"`
+  name: some-metrics-service-name
+  namespace: "foo"
+---
+kind: Deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+`
 
 			tempdir, err := ioutil.TempDir("", "foo")
 			Expect(err).ToNot(HaveOccurred())
@@ -82,9 +91,16 @@ metadata:
 			serviceContent, err := ioutil.ReadFile(serviceFile)
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(string(serviceContent)).To(ContainSubstring(`namespace: "{{.Release.Namespace}}"`), string(serviceContent))
+			Expect(string(serviceContent)).To(ContainSubstring(`namespace: '{{.Release.Namespace}}'`), string(serviceContent))
+			Expect(string(serviceContent)).To(ContainSubstring(`name: '{{ include "helm-chart.fullname" . }}-metrics-service'`), string(serviceContent))
+
+			deploymentFile := filepath.Join(tempdir, "deployment.yaml")
+			Expect(deploymentFile).To(BeARegularFile())
+
+			deploymentContent, err := ioutil.ReadFile(deploymentFile)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(string(deploymentContent)).To(ContainSubstring(`matchLabels: '{{- include "helm-chart.selectorLabels" . | nindent 6 }}'`), string(serviceContent))
 		})
-
 	})
-
 })
