@@ -34,6 +34,10 @@ var helmRules = []rules{
 		Replacement: replaceKeyValue(`.metadata.name`, `"{{ include \"helm-chart.fullname\" . }}"`),
 	},
 	{
+		Condition:   hasKeyWithValue(".kind", "Service"),
+		Replacement: replaceKeyValue(`.spec.selector`, `"{{- include \"helm-chart.selectorLabels\" . | nindent 6 }}"`),
+	},
+	{
 		Condition:   hasKeyWithValue(".kind", "Deployment"),
 		Replacement: replaceKeyValue(`.spec.template.spec.containers[1].image`, `"{{ .Values.image.repository | default \"\" }}:{{ .Values.image.tag | default .Chart.AppVersion }}"`),
 	},
@@ -75,12 +79,24 @@ var helmRules = []rules{
 	},
 	{
 		Condition:   hasKeyWithValue(".kind", "Deployment"),
-		Replacement: replaceKeyValue(`.spec.selector.matchLabels`, `"{{- include \"helm-chart.selectorLabels\" . | nindent 6 }}"`),
+		Replacement: replaceKeyValue(`.spec.labels`, `"{{- include \"helm-chart.labels\" . | nindent 8 }}"`),
 	},
-	// {
-	// 	Condition:   hasKeyWithValue("/kind", "Deployment"),
-	// 	Replacement: replaceKeyValue(`/spec/template/metadata/labels`, `{{- include "helm-chart.selectorLabels" . | nindent 10 }}`),
-	// },
+	{
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
+		Replacement: replaceKeyValue(`.spec.selector.matchLabels`, `"{{- include \"helm-chart.selectorLabels\" . | nindent 10 }}"`),
+	},
+	{
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
+		Replacement: replaceKeyValue(`.spec.template.metadata.labels`, `"{{- include \"helm-chart.selectorLabels\" . | nindent 14 }}"`),
+	},
+	{
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
+		Replacement: replaceKeyValue(`.spec.template.metadata.annotations`, `"{{- range keys .Values.podAnnotations }}{{ . | quote }}: {{ get $.Values.podAnnotations . | quote}}{{- end }}"`),
+	},
+	{
+		Condition:   hasKeyWithValue(".kind", "Deployment"),
+		Replacement: replaceKeyValue(`.imagePullSecrets`, `"{{ toYaml .Values.imagePullSecrets | nindent 14 }}"`),
+	},
 }
 
 func hasKey(key string) func(content []byte, data map[string]interface{}) bool {
